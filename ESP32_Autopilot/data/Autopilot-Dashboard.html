@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autopilot Dashboard – NAVIS</title>
+<style>
+/* --- DEIN URSPRÜNGLICHER STYLE --- */
+body { background:#001a26; color:#00e6e6; font-family:"Segoe UI",Arial,sans-serif; margin:0; text-align:center; display:flex; flex-direction:column; align-items:center; }
+header { background:#002b3a; color:#00ffff; padding:15px; font-size:1.6em; font-weight:bold; border-bottom:2px solid #005566; width:100%; box-sizing:border-box; }
+#navbar { display:flex; justify-content:center; gap:8px; background:#002b3a; padding:6px 0; border-bottom:1px solid #005566; width:100%; }
+.navbtn { background:#003d52; color:#00ffff; border:1px solid #007a99; border-radius:5px; padding:4px 12px; text-decoration:none; font-size:.9em; font-weight:bold; transition:.2s; }
+.navbtn:hover { background:#00b8d4; color:#001a26; }
+
+.sectionBox { background:#003d52; border:1px solid #007a99; border-radius:10px; padding:15px; margin:20px auto; width:95%; max-width:520px; text-align:left; box-sizing:border-box; }
+.sectionBox h2 { color:#00ffff; margin-top:0; border-bottom:1px solid #007a99; display:inline-block; padding-bottom:4px; font-size:1.2em; }
+
+.data-row { display:flex; justify-content:space-between; margin:8px 0; font-size:1em; }
+.status { font-weight:bold; color:#00ff00; }
+.status.offline { color:#ff3333; }
+
+/* CANVAS STYLES AUS DEN BEISPIELEN */
+.panel { background:#2a2f38; border-radius:12px; padding:8px; box-shadow:0 8px 28px rgba(0,0,0,0.6); margin:10px auto; display:inline-block; }
+canvas { display:block; border-radius:12px; max-width:100%; height:auto; }
+.footer { margin: 40px auto 20px auto; padding-top: 10px; border-top: 1px solid #005566; color: #00b8d4; font-size: 0.9em; text-align: center; opacity: 0.9; width: 100%; max-width: 450px; }
+</style>
+</head>
+<body>
+
+<div id="navbar">
+  <a href="index.html" class="navbtn">NAVIS</a>
+  <a href="autopilot.html" class="navbtn">Steuerung</a>
+  <a href="Autopilot-Dashboard.html" class="navbtn">Dashboard</a>
+</div>
+
+<header>Autopilot Dashboard</header>
+
+<div class="sectionBox">
+  <h2>Verbindung</h2>
+  <div class="data-row"><span>Status:</span> <span id="wsStatus" class="status offline">Offline</span></div>
+</div>
+
+
+<div class="sectionBox">
+  <h2>GPS Telemetrie</h2>
+  <div class="data-row"><span>Latitude:</span> <span id="lat">–</span></div>
+  <div class="data-row"><span>Longitude:</span> <span id="lon">–</span></div>
+  <div class="data-row"><span>Speed (kn):</span> <span id="speed">–</span></div>
+  <div class="data-row"><span>Kurs (°):</span> <span id="kurs">–</span></div>
+  <div class="data-row"><span>Sats / HDOP:</span> <span><span id="sats">–</span> / <span id="hdop">–</span></span></div>
+</div>
+
+<div class="sectionBox">
+  <h2>Sensor Rohdaten</h2>
+  <div class="data-row"><span>Roll:</span> <span id="rollVal">– °</span></div>
+  <div class="data-row"><span>Pitch:</span> <span id="pitchVal">– °</span></div>
+  <div class="data-row"><span>Kompass:</span> <span id="kompassVal">– °</span></div>
+</div>
+
+<!-- 1. HORIZONT -->
+<div class="sectionBox" style="text-align:center;">
+  <h2>Künstlicher Horizont</h2>
+  <div class="panel">
+    <canvas id="horizonCanvas" width="400" height="400"></canvas>
+  </div>
+</div>
+
+<!-- 2. KOMPASS -->
+<div class="sectionBox" style="text-align:center;">
+  <h2>Marine Kompass</h2>
+  <div class="panel">
+    <canvas id="compassCanvas" width="600" height="600"></canvas>
+  </div>
+</div>
+<div class="footer">
+    <strong>Marine Dashboard v1.1</strong><br>
+    Entwickelt von den Partnern <span style="color:#00ffff;">Eike</span> & <span style="color:#00ffff;">NAVIS</span>.<br>
+    © 2025 – System ESP32
+</div>
+<script>
+/* ================== TELEMETRIE STATE ================== */
+const state = { roll: 0, pitch: 0, kompass: 0, gps_speed: 0, winddir_gemessen: 0, winddir_berechnet: 0 };
+const target = JSON.parse(JSON.stringify(state));
+
+let windGemessenMin = 0, windGemessenMax = 0;
+let windGemessenHistory = [];
+const WIND_HISTORY_SEC = 240 * 15;
+
+const hCanvas = document.getElementById('horizonCanvas');
+const hctx = hCanvas.getContext('2d');
+const cCanvas = document.getElementById('compassCanvas');
+const cctx = cCanvas.getContext('2d');
+
+/* ================== WEBSOCKET ================== */
+function initWS() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { 
+    document.getElementById("wsStatus").textContent="Online"; 
+    document.getElementById("wsStatus").className="status"; 
+  };
+  ws.onclose = () => { 
+    document.getElementById("wsStatus").textContent="Offline"; 
+    document.getElementById("wsStatus").className="status offline"; 
+    setTimeout(initWS, 2000); 
+  };
+  ws.onmessage = (e) => {
+    try {
+      const d = JSON.parse(e.data);
+
+      // IMU Werte
+      if(d.imu_roll !== undefined && d.imu_roll !== null) { 
+        target.roll = d.imu_roll; 
+        document.getElementById("rollVal").textContent = d.imu_roll.toFixed(1) + " °"; 
+      }
+      if(d.imu_pitch !== undefined && d.imu_pitch !== null) { 
+        target.pitch = d.imu_pitch; 
+        document.getElementById("pitchVal").textContent = d.imu_pitch.toFixed(1) + " °"; 
+      }
+      if(d.imu_kompass !== undefined && d.imu_kompass !== null) { 
+        target.kompass = d.imu_kompass; 
+        document.getElementById("kompassVal").textContent = d.imu_kompass.toFixed(1) + " °"; 
+      }
+
+      // GPS Werte
+      if(d.gps_lat !== undefined && d.gps_lat !== null) document.getElementById("lat").textContent = d.gps_lat.toFixed(6);
+      if(d.gps_lon !== undefined && d.gps_lon !== null) document.getElementById("lon").textContent = d.gps_lon.toFixed(6);
+      if(d.gps_speed !== undefined && d.gps_speed !== null) { 
+        target.gps_speed = d.gps_speed; 
+        document.getElementById("speed").textContent = d.gps_speed.toFixed(1); 
+      }
+      if(d.gps_kurs !== undefined && d.gps_kurs !== null) document.getElementById("kurs").textContent = d.gps_kurs.toFixed(1);
+      if(d.gps_sats !== undefined && d.gps_sats !== null) document.getElementById("sats").textContent = d.gps_sats;
+      if(d.gps_hdop !== undefined && d.gps_hdop !== null) document.getElementById("hdop").textContent = d.gps_hdop.toFixed(1);
+
+      // Wind Simulation / Update
+      if(d.wind_dir !== undefined && d.wind_dir !== null) {
+        target.winddir_gemessen = d.wind_dir;
+        windGemessenHistory.push(d.wind_dir);
+        if(windGemessenHistory.length > 100) windGemessenHistory.shift();
+        windGemessenMin = Math.min(...windGemessenHistory);
+        windGemessenMax = Math.max(...windGemessenHistory);
+      }
+    } catch(err) { console.warn(err); }
+  };
+}
+
+/* ================== DRAW HORIZON (ORIGINAL-FUNKTION) ================== */
+function drawHorizon() {
+  const w = hCanvas.width, h = hCanvas.height, cx = w/2, cy = h/2, r = Math.min(cx, cy) - 10;
+  hctx.clearRect(0,0,w,h);
+  hctx.save();
+  hctx.beginPath(); hctx.arc(cx, cy, r, 0, Math.PI * 2); hctx.clip();
+
+  hctx.save();
+  hctx.translate(cx, cy);
+  hctx.rotate(state.roll * Math.PI/180);
+
+  const maxPitch = 45;
+  const tickScale = (r / maxPitch) * 0.6;
+  const pitchPixels = (state.pitch * tickScale);
+
+  // Himmel
+  const skyTop = -r*2 + pitchPixels;
+  const skyGrad = hctx.createLinearGradient(0, skyTop, 0, r*2 + pitchPixels);
+  skyGrad.addColorStop(0, '#102b9b'); skyGrad.addColorStop(0.6, '#3c7fd0');
+  hctx.fillStyle = skyGrad; hctx.fillRect(-r*2, skyTop, r*4, r*2);
+
+  // Meer
+  const seaTop = 0 + pitchPixels;
+  const seaGrad = hctx.createLinearGradient(0, seaTop, 0, r*2 + pitchPixels);
+  seaGrad.addColorStop(0, '#15301a'); seaGrad.addColorStop(1, '#271103');
+  hctx.fillStyle = seaGrad; hctx.fillRect(-r*2, seaTop, r*4, r*4);
+
+  // Horizontlinie
+  hctx.strokeStyle = 'rgba(200,200,200,0.85)'; hctx.lineWidth = 3;
+  hctx.beginPath(); hctx.moveTo(-r*1.15, pitchPixels); hctx.lineTo(r*1.15, pitchPixels); hctx.stroke();
+
+  // Pitch-Ticks
+  hctx.lineWidth = 1.7; hctx.strokeStyle = 'rgba(255,255,255,0.85)'; hctx.fillStyle = '#fff'; hctx.font = '12px Segoe UI';
+  for(let p = -60; p <= 60; p += 5){
+    const y = -p * tickScale + pitchPixels; if(Math.abs(y) > r) continue;
+    const len = (p % 15 === 0) ? 44 : 22;
+    hctx.beginPath(); hctx.moveTo(-len/2, y); hctx.lineTo(len/2, y); hctx.stroke();
+    if(p % 15 === 0 && p !== 0){
+      hctx.textAlign = 'center';
+      hctx.fillText(Math.abs(p) + '°', -len/2 - 14, y + 4);
+      hctx.fillText(Math.abs(p) + '°', len/2 + 14, y + 4);
+    }
+  }
+  hctx.restore();
+
+  // Roll-Ticks am Rand
+  hctx.save(); hctx.translate(cx, cy);
+  for(let a = -90; a <= 90; a += 5){
+    const ang = a * Math.PI / 180;
+    const inner = (a % 15 === 0) ? r - 14 : r - 8;
+    hctx.beginPath(); hctx.moveTo(inner * Math.sin(ang), -inner * Math.cos(ang)); hctx.lineTo(r * Math.sin(ang), -r * Math.cos(ang));
+    hctx.strokeStyle = 'rgba(255,255,255,0.95)'; hctx.lineWidth = 1; hctx.stroke();
+    if(a % 15 === 0){
+      const lx = (r - 30) * Math.sin(ang), ly = -(r - 30) * Math.cos(ang);
+      hctx.save(); hctx.translate(lx, ly); hctx.rotate(ang);
+      hctx.fillStyle = '#e6e9eb'; hctx.font = '10px Segoe UI'; hctx.textAlign = 'center';
+      hctx.fillText(a + '°', 0, 0); hctx.restore();
+    }
+  }
+
+  // Rotes Dreieck oben
+  hctx.rotate(-state.roll * Math.PI/180);
+  hctx.beginPath(); hctx.moveTo(0, -r + 2); hctx.lineTo(-7, -r + 16); hctx.lineTo(7, -r + 16); hctx.closePath();
+  hctx.fillStyle = '#ff1213'; hctx.fill(); hctx.restore();
+
+  // Zentrumskreuz
+  hctx.strokeStyle = '#ff1213'; hctx.lineWidth = 3;
+  hctx.beginPath(); hctx.moveTo(cx - 32, cy); hctx.lineTo(cx + 32, cy); hctx.moveTo(cx, cy); hctx.lineTo(cx, cy - 18); hctx.stroke();
+  hctx.restore();
+}
+
+/* ================== DRAW COMPASS (ORIGINAL-FUNKTIONEN) ================== */
+function drawArrow(ctx,fx,fy,tx,ty,color,head=12,width=3,glow=2){
+  const dx = tx - fx, dy = ty - fy, ang = Math.atan2(dy,dx);
+  ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = glow;
+  ctx.beginPath(); ctx.moveTo(fx,fy); ctx.lineTo(tx,ty);
+  ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(tx,ty);
+  ctx.lineTo(tx-head*Math.cos(ang-Math.PI/6), ty-head*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(tx-head*Math.cos(ang+Math.PI/6), ty-head*Math.sin(ang+Math.PI/6));
+  ctx.closePath(); ctx.fillStyle = color; ctx.fill(); ctx.restore();
+}
+
+function drawLabelBox(ctx,x,y,color,lines){
+  ctx.save(); ctx.font = "bold 13px Segoe UI"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const pad = 8, lineH = 18; const widths = lines.map(t => ctx.measureText(t).width);
+  const w = Math.max(...widths) + pad*2, h = lineH * lines.length + pad;
+  ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(x-w/2,y-h/2,w,h);
+  ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.strokeRect(x-w/2,y-h/2,w,h);
+  ctx.fillStyle = color; lines.forEach((t,i)=> ctx.fillText(t, x, y - h/2 + 6 + i*lineH));
+  ctx.restore();
+}
+
+function drawWindTriangle(ctx, cx, cy, r, minDeg, maxDeg, color){
+  const minAng = (minDeg-90)*Math.PI/180; const maxAng = (maxDeg-90)*Math.PI/180;
+  ctx.save(); ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,minAng,maxAng); ctx.closePath();
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, color + '44'); grad.addColorStop(1, color + '00');
+  ctx.fillStyle = grad; ctx.fill(); ctx.restore();
+}
+
+function drawCompass(){
+  const cx=cCanvas.width/2, cy=cCanvas.height/2+10, r=Math.min(cx,cy)-20;
+  cctx.clearRect(0,0,cCanvas.width,cCanvas.height);
+  const bg=cctx.createRadialGradient(cx,cy,40,cx,cy,r);
+  bg.addColorStop(0,'#3a3f44'); bg.addColorStop(1,'#111214');
+  cctx.fillStyle=bg; cctx.beginPath(); cctx.arc(cx,cy,r,0,Math.PI*2); cctx.fill();
+
+  cctx.save(); cctx.translate(cx,cy); cctx.rotate(-state.kompass*Math.PI/180);
+  for(let i=0;i<360;i+=10){
+    const ang=(i-90)*Math.PI/180; const inner=(i%30===0)?r-25:r-12;
+    cctx.beginPath(); cctx.moveTo(inner*Math.cos(ang),inner*Math.sin(ang));
+    cctx.lineTo(r*Math.cos(ang),r*Math.sin(ang));
+    cctx.strokeStyle='#8b8f92'; cctx.lineWidth=(i%30===0)?2:1; cctx.stroke();
+    if(i%30===0){
+      const lx=(r-45)*Math.cos(ang), ly=(r-45)*Math.sin(ang);
+      cctx.save(); cctx.translate(lx,ly); cctx.rotate(state.kompass*Math.PI/180);
+      cctx.fillStyle='#e6e9eb'; cctx.font='bold 14px Segoe UI'; cctx.textAlign='center'; cctx.textBaseline='middle';
+      cctx.fillText((i===0?'N':i===90?'E':i===180?'S':i===270?'W':i),0,0); cctx.restore();
+    }
+  }
+  cctx.restore();
+
+  drawWindTriangle(cctx, cx, cy, r*0.78, windGemessenMin, windGemessenMax, '#ffcc33');
+  drawArrow(cctx,cx,cy,cx,cy-r+15,'#00aaff',15,5,2); // Voraus-Pfeil
+  const appAng=(state.winddir_gemessen-90)*Math.PI/180;
+  drawArrow(cctx,cx,cy,cx+r*0.72*Math.cos(appAng),cy+r*0.72*Math.sin(appAng),'#ffcc33',12,4,2);
+  drawLabelBox(cctx,cx,cy,'#00ff66',[state.kompass.toFixed(0)+'°', state.gps_speed.toFixed(1)+' kn']);
+}
+
+/* ================== ANIMATION LOOP ================== */
+let lastT = performance.now();
+function animate(now) {
+  const dt = (now - lastT)/1000; lastT = now;
+  const sm = 1 - Math.exp(-5 * dt);
+  state.roll += (target.roll - state.roll) * sm;
+  state.pitch += (target.pitch - state.pitch) * sm;
+  let dK = target.kompass - state.kompass; if(dK > 180) dK -= 360; if(dK < -180) dK += 360;
+  state.kompass += dK * sm;
+  state.gps_speed += (target.gps_speed - state.gps_speed) * sm;
+  state.winddir_gemessen += (target.winddir_gemessen - state.winddir_gemessen) * sm;
+
+  drawHorizon();
+  drawCompass();
+  requestAnimationFrame(animate);
+}
+
+window.onload = () => { initWS(); requestAnimationFrame(animate); };
+</script>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autopilot Steuerung</title>
+    <style>
+        body { background:#001a26; color:#00e6e6; font-family:"Segoe UI",Arial,sans-serif; margin:0; text-align:center; }
+        header { background:#002b3a; color:#00ffff; padding:15px; font-size:1.8em; font-weight:bold; border-bottom:2px solid #005566; }
+        .section-title { color:#00ffff; margin-top:30px; font-size:1.4em; border-bottom:1px solid #007a99; display:inline-block; padding-bottom:4px; }
+        .switch-section { margin-top:40px; padding:25px 0; background:linear-gradient(180deg,#00141d,#00242f); border-top:2px solid #005566; border-bottom:2px solid #005566; display:flex; flex-direction:column; align-items:center; }
+        .switch { border:2px solid #007a99; border-radius:12px; width:200px; padding:15px; font-size:18px; font-weight:bold; cursor:pointer; transition:.3s; margin:10px 0; background:#0b2a38; }
+        .switch.active { background:#00ff00 !important; color:#001a26; }
+        .rotary-encoder { width:340px; height:340px; margin:30px auto; position:relative; }
+        .angle-display { font-size:1.8em; color:#66ffff; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+        #rotary-svg { width:100%; height:100%; }
+        .marker { stroke:#00ffff; stroke-width:5; stroke-linecap:round; }
+        .scale-small { stroke:#008899; stroke-width:1.2; }
+        .scale-major { stroke:#00cccc; stroke-width:2; }
+        .warning { stroke:yellow; stroke-width:3; }
+        .zero-line { stroke:#00ffff; stroke-width:4; }
+        .boot { fill:#00b8d4; transform-origin:100px 100px; transition:transform .1s linear; }
+        .slider { width:200px; margin-top:20px; appearance:none; background:#004d66; height:10px; border-radius:5px; }
+        .slider::-webkit-slider-thumb { appearance:none; width:20px; height:20px; background:#00b8d4; border-radius:50%; cursor:pointer; }
+        .footer { margin: 40px auto 20px auto; padding-top: 10px; border-top: 1px solid #005566; color: #00b8d4; font-size: 0.9em; text-align: center; opacity: 0.9; width: 100%; max-width: 450px; }
+        #navbar { display:flex; justify-content:center; gap:8px; background:#002b3a; padding:4px 0; border-bottom:1px solid #005566; }
+        .navbtn { background:#003d52; color:#00ffff; border:1px solid #007a99; border-radius:5px; padding:3px 10px; text-decoration:none; font-size:.9em; font-weight:bold; transition:.2s; }
+        .navbtn:hover { background:#00b8d4; color:#001a26; border-color:#00e6e6; }
+		#wind_dir { filter: drop-shadow(0 0 2px rgba(255, 255, 0, 0.8)); }
+		.reset-container { display: flex; justify-content: flex-end; width: 340px; margin: -20px auto 10px auto; }
+		.reset-btn { background: #4d0000; color: #ff6666; border: 1px solid #990000; border-radius: 4px; padding: 5px 12px; font-size: 0.85em; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 0 5px rgba(255, 0, 0, 0.2); }
+		.reset-btn:hover { background: #800000; color: #ffffff; box-shadow: 0 0 10px rgba(255, 0, 0, 0.5); }
+		.reset-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <nav id="navbar">
+        <a href="index.html" class="navbtn">NAVIS</a>
+        <a href="autopilot.html" class="navbtn">Steuerung</a>
+        <a href="Autopilot-Dashboard.html" class="navbtn">Autopilot-Dashboard</a>
+    </nav>
+
+    <header>Autopilot Steuerung</header>
+
+    <main>
+        <section class="switch-section">
+            <h2 class="section-title">Modus Auswahl</h2>
+            <div class="switch" id="modus_kompass">Kompass Kurs</div>
+            <div class="switch" id="modus_gps">GPS Koordinate</div>
+            <div class="switch" id="modus_wind">Windsteuerung</div>
+            <div class="switch" id="modus_off">OFF</div>
+        </section>
+
+        <h2 class="section-title">Kursübersteuerung</h2>
+        
+        <div class="rotary-encoder">
+            <svg id="rotary-svg" viewBox="0 0 200 200">
+                <!-- Halbkreis Farben -->
+                <path d="M100 10 A90 90 0 0 0 100 190" fill="none" stroke="red" stroke-width="7"/>
+                <path d="M100 10 A90 90 0 0 1 100 190" fill="none" stroke="green" stroke-width="7"/>
+                
+                <path id="activeSegment" fill="none"/>
+                <g id="scale"></g>
+				<g id="compassScale"></g>
+				<!-- Windrichtungs-Pfeil -->
+				<polygon id="wind_dir" points="100,5 95,20 100,65 105,20" fill="yellow"/>
+                
+				<line x1="100" y1="15" x2="100" y2="35" class="zero-line"/>
+                <line id="warnL" x1="100" y1="20" x2="100" y2="5" class="warning"/>
+                <line id="warnR" x1="100" y1="20" x2="100" y2="5" class="warning"/>
+
+                <line id="marker" x1="100" y1="100" x2="100" y2="35" class="marker"/>
+                <polygon class="boot" points="100,85 94,115 106,115"/>
+            </svg>
+            <div class="angle-display" id="angle_value">0°</div>
+			<!-- NEU: Reset Button Rechts unterhalb -->
+			<div class="reset-container">
+				<button class="reset-btn" id="reset_angle">RESET 0°</button>
+			</div>	
+        </div>
+
+		<input type="range" min="-45" max="45" value="0" step="1" id="angle_input" class="slider">
+
+        <section class="switch-section">
+            <h2 class="section-title">Pinne Steuerung</h2>
+            <div class="switch" id="pinnen_einfahren">Pinne Einfahren</div>
+            <div class="switch" id="pinnen_ausfahren">Pinne Ausfahren</div>
+            <div class="switch" id="pinnen_stop">Stop</div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <strong>Marine Dashboard v1.1</strong><br>
+        Entwickelt von den Partnern <span style="color:#00ffff;">Eike</span> & <span style="color:#00ffff;">NAVIS</span>.<br>
+        © 2025 – System ESP32
+    </footer>
+	<script>
+	const MODE = { off: 0, kompass: 1, gps: 2, wind: 3 }, PINNE = { stop: 0, einfahren: 1, ausfahren: 2 };
+	let lastSendTime = 0, lastSentAngle = null;
+	const THROTTLE_MS = 100, svg = document.getElementById("rotary-svg"), scaleGroup = document.getElementById("scale");
+	const compassGroup = document.getElementById("compassScale");
+	let windDirection = 0; // 0–360°
+	
+	// Skala & Initialisierung
+	for (let a = -45; a <= 45; a += 5) {
+		let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+		line.setAttribute("x1", 100); line.setAttribute("y1", 10); line.setAttribute("x2", 100); line.setAttribute("y2", 20);
+		line.setAttribute("transform", `rotate(${a} 100 100)`);
+		line.setAttribute("class", (a % 15 === 0) ? "scale-major" : "scale-small");
+		scaleGroup.appendChild(line);
+	}
+	// ===============================
+	// 360° Kompass-Skala
+	// ===============================
+	for (let a = 0; a < 360; a += 5) {
+		let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+		line.setAttribute("x1", 100);
+		line.setAttribute("y1", 4);
+		line.setAttribute("x2", 100);
+		line.setAttribute("y2", (a % 30 === 0) ? 18 : 12);
+		line.setAttribute("transform", `rotate(${a} 100 100)`);
+		line.setAttribute("class", (a % 30 === 0) ? "scale-major" : "scale-small");
+		compassGroup.appendChild(line);
+	}
+	document.getElementById("warnL").setAttribute("transform", "rotate(-30 100 100)");
+	document.getElementById("warnR").setAttribute("transform", "rotate(30 100 100)");
+
+	function updateMarker(angle) {
+		document.getElementById("marker").setAttribute("transform", `rotate(${angle} 100 100)`);
+		document.querySelector(".boot").style.transform = `rotate(${angle}deg)`;
+		updateActiveSegment(angle);
+	}
+	
+	// Reset Button Logik
+	document.getElementById("reset_angle").addEventListener("click", () => {
+		const input = document.getElementById("angle_input");
+		const display = document.getElementById("angle_value");
+		
+		// Werte auf 0 setzen
+		input.value = 0;
+		display.innerText = "0°";
+		
+		// Visuelle Elemente aktualisieren
+		updateMarker(0);
+		
+		// Sofort an Server senden (URL: /autopilot_data?winkel=0)
+		fetch(`/autopilot_data?winkel=0`)
+			.then(response => {
+				if (DEBUG_MODE_SERVER) console.log("Reset auf 0° erfolgreich");
+			})
+			.catch(err => console.error("Fehler beim Reset:", err));
+	});
+
+	// ===============================
+	// Windrichtungsanzeige
+	// ===============================
+	function updateWindDirection(angle360) {
+		windDirection = angle360 % 360;
+		document.getElementById("wind_dir").setAttribute("transform", `rotate(${windDirection} 100 100)`);
+	}
+	
+	function updateActiveSegment(angle) {
+		const segment = document.getElementById("activeSegment");
+		if (angle === 0) return segment.setAttribute("d", "");
+		const r = 78, cx = 100, cy = 100, rad = (angle - 90) * Math.PI / 180;
+		const x2 = cx + r * Math.cos(rad), y2 = cy + r * Math.sin(rad);
+		const d = `M ${cx} ${cy} L 100 ${cy - r} A ${r} ${r} 0 0 ${angle > 0 ? 1 : 0} ${x2} ${y2} Z`;
+		segment.setAttribute("d", d);
+		segment.setAttribute("fill", angle > 0 ? `rgba(0,160,0,${0.2 + Math.abs(angle) / 100})` : `rgba(220,0,0,${0.2 + Math.abs(angle) / 100})`);
+	}
+
+	async function fetchStatus() {
+		try {
+			const r = await fetch("/autopilot_status"), s = await r.json();
+			document.getElementById("angle_input").value = s.offset;
+			document.getElementById("angle_value").textContent = s.offset + "°";
+			updateMarker(s.offset);
+			Object.keys(MODE).forEach(m => document.getElementById("modus_" + m).classList.toggle("active", s.mode === MODE[m]));
+			if (s.pinne !== undefined) Object.keys(PINNE).forEach(p => document.getElementById("pinnen_" + p).classList.toggle("active", s.pinne === PINNE[p]));
+		} catch (e) { console.log(e); }
+		if (s.wind !== undefined) updateWindDirection(s.wind);
+	}
+
+	async function send(params) {
+		const now = Date.now();
+		if (now - lastSendTime < THROTTLE_MS) {
+			clearTimeout(send.timeout);
+			send.timeout = setTimeout(() => send(params), THROTTLE_MS);
+			return;
+		}
+		lastSendTime = now;
+		await fetch("/autopilot_data?" + params);
+		fetchStatus();
+	}
+
+	// Events
+	Object.keys(MODE).forEach(m => document.getElementById("modus_" + m).onclick = () => send("modus=" + MODE[m]));
+	Object.keys(PINNE).forEach(p => document.getElementById("pinnen_" + p).onclick = () => send("pinne=" + PINNE[p]));
+
+	document.getElementById("angle_input").oninput = (e) => {
+		let val = Math.round(e.target.value); // vorher: /5 * 5
+		document.getElementById("angle_value").textContent = val + "°";
+		updateMarker(val);
+		if (val !== lastSentAngle) { lastSentAngle = val; send("winkel=" + val); }
+	};
+
+	let dragging = false;
+	function handleMove(x) {
+		const rect = svg.getBoundingClientRect(), dx = x - (rect.left + rect.width / 2);
+		let angle = Math.round(Math.max(-45, Math.min(45, (dx / (rect.width / 2) * 45)))); // vorher: /5 * 5
+		document.getElementById("angle_input").value = angle;
+		document.getElementById("angle_value").textContent = angle + "°";
+		updateMarker(angle);
+		if (angle !== lastSentAngle) { lastSentAngle = angle; send("winkel=" + angle); }
+	}
+
+
+	svg.onmousedown = (e) => { dragging = true; handleMove(e.clientX); };
+	svg.ontouchstart = (e) => { dragging = true; handleMove(e.touches[0].clientX); };
+	window.onmousemove = (e) => dragging && handleMove(e.clientX);
+	window.ontouchmove = (e) => dragging && handleMove(e.touches[0].clientX);
+	window.onmouseup = window.ontouchend = () => dragging = false;
+	window.onload = () => {
+		fetchStatus();
+		updateWindDirection(45); // TESTwert sichtbar
+	};
+	</script>
+</body>
+</html>

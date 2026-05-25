@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autopilot – Zentrale Einstellungen</title>
+    <style>
+        body { background:#001a26; color:#00e6e6; font-family:"Segoe UI",Arial,sans-serif; margin:0; text-align:center; }
+        header { background:#002b3a; color:#00ffff; padding:15px; font-size:1.6em; font-weight:bold; border-bottom:2px solid #005566; }
+        #navbar { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; background:#002b3a; padding:6px 0; border-bottom:1px solid #005566; }
+        .navbtn { background:#003d52; color:#00ffff; border:1px solid #007a99; border-radius:5px; padding:4px 12px; text-decoration:none; font-size:.9em; font-weight:bold; transition:.2s; }
+        .navbtn:hover { background:#00b8d4; color:#001a26; }
+        h2 { color:#00ffff; margin-top:30px; border-bottom:1px solid #007a99; display:inline-block; padding-bottom:4px; }
+        form { margin:20px auto; width:90%; max-width:520px; text-align:left; }
+        .sectionBox { background:#003d52; border:1px solid #007a99; border-radius:10px; padding:15px; margin-top:15px; }
+        label { display:block; margin-top:10px; }
+        input, select { width:100%; padding:8px; margin-top:5px; border-radius:5px; border:1px solid #007a99; background:#003d52; color:#ffffff; box-sizing:border-box; }
+        .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:10px; }
+        .checkbox-row input { width:auto; margin:0; }
+        .boatSizeContainer { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:10px; }
+        .boatSizeBtn { padding:6px 10px; background:#005566; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:.85em; flex:1 1 45px; min-width:45px; max-width:70px; text-align:center; }
+        .boatSizeBtn:hover { background:#007d91; }
+        .boatSizeBtn.active { background:#00bcd4; color:#000; font-weight:bold; }
+        .buttonBar { margin-top:20px; display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+        button.mainBtn { padding:8px 12px; background:#007BFF; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; flex:1 1 120px; min-width:100px; max-width:200px; }
+        button.mainBtn:hover { background:#00b8d4; color:#001a26; }
+        .rudderBtnContainer { display:flex; justify-content:center; margin-top:6px; }
+        .rudderBtnContainer button { padding:6px 12px; width:auto; }
+        .fileupdatebtn { display: inline-block; padding: 12px 28px; background: linear-gradient(135deg, #1a2a35 0%, #003d52 100%); color: #00d4ff; text-decoration: none; font-family: 'Segoe UI', sans-serif; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-radius: 12px; border: 1px solid rgba(0, 212, 255, 0.3); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); transition: all 0.3s ease; cursor: pointer; }
+        .fileupdatebtn:hover { background: #00bcd4; color: #0f1218; border-color: #00e5ff; box-shadow: 0 0 20px rgba(0, 212, 255, 0.6); transform: translateY(-2px); }
+        .fileupdatebtn:active { transform: translateY(0); }
+        @media (max-width: 400px) { form { width:95%; } .boatSizeBtn { flex:1 1 40px; min-width:35px; max-width:50px; font-size:.8em; } button.mainBtn { flex:1 1 100px; min-width:80px; } }
+        .footer { margin: 40px auto 20px auto; padding-top: 10px; border-top: 1px solid #005566; color: #00b8d4; font-size: 0.9em; text-align: center; opacity: 0.9; width: 100%; max-width: 450px; }
+    </style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<div id="navbar">
+    <a href="index.html" class="navbtn">NAVIS</a>
+    <a href="autopilot.html" class="navbtn">Steuerung</a>
+    <a href="Autopilot-Dashboard.html" class="navbtn">Autopilot-Dashboard</a>
+</div>
+
+<header>Autopilot – Zentrale Einstellungen</header>
+
+<form id="configForm">
+
+    <!-- WLAN -->
+    <h2>WLAN</h2>
+    <div class="sectionBox">
+        <label>SSID</label>
+        <select id="ssid"></select>
+
+        <label>Passwort</label>
+        <input type="password" id="password">
+
+        <label>Ziel-Port</label>
+        <input type="number" id="port" value="80">
+    </div>
+
+    <!-- Sensor Frequenzen -->
+    <h2>Sensor Frequenzen</h2>
+    <div class="sectionBox">
+        <label>GPS Frequenz (1–10 Hz)</label>
+        <input type="number" id="gpsHz" min="1" max="10" value="5">
+
+        <label>IMU Frequenz (50–200 Hz)</label>
+        <input type="number" id="imuHz" min="50" max="200" value="100">
+
+        <label>Autopilot Sendeintervall (50–1000 ms)</label>
+        <input type="number" id="sendInterval" min="50" max="1000" value="200">
+    </div>
+
+    <!-- Autopilot -->
+    <h2>Autopilot</h2>
+    <div class="sectionBox">
+
+        <!-- Pinneninvertierung -->
+        <div class="checkbox-row">
+            <input type="checkbox" id="invertPinne">
+            <label for="invertPinne" style="margin:0;">Pinnenrichtung invertieren</label>
+        </div>
+
+        <!-- PID Startwerte nach Bootslänge -->
+        <h3 style="text-align:center; margin-top:20px;">Startwerte nach Bootslänge</h3>
+        <div class="boatSizeContainer">
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(5, event)">5m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(6, event)">6m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(7, event)">7m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(8, event)">8m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(9, event)">9m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(10, event)">10m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(11, event)">11m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(12, event)">12m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(13, event)">13m</button>
+            <button type="button" class="boatSizeBtn" onclick="setBoatSize(14, event)">14m</button>
+        </div>
+
+        <label>P</label>
+        <input type="number" step="0.001" id="pBase">
+
+        <label>I</label>
+        <input type="number" step="0.001" id="iBase">
+
+        <label>D</label>
+        <input type="number" step="0.001" id="dBase">
+
+        <!-- Mechanik Limits -->
+        <h3 style="text-align:center; margin-top:20px;">Mechanik & Ruder Limits</h3>
+   
+        <div id="currentRudder" style="text-align:center; margin-bottom:10px;">
+            Aktueller Ruderwinkel: <span id="rudderAngleDisplay">0</span>°
+        </div>
+
+        <label>Minimaler Ruderwinkel (°)</label>
+        <input type="number" step="0.1" min="0" max="359.9" value="45" id="rudderMin">
+        <div style="text-align:center; margin-top:6px;">
+            <button type="button" class="mainBtn" style="padding:6px 12px; width:auto;" onclick="setRudderMin()">↘ Auf aktuellen Wert</button>
+        </div>
+
+        <label style="margin-top:10px;">Maximaler Ruderwinkel (°)</label>
+        <input type="number" step="0.1" min="0" max="359.9" value="125" id="rudderMax">
+        <div style="text-align:center; margin-top:6px;">
+            <button type="button" class="mainBtn" style="padding:6px 12px; width:auto;" onclick="setRudderMax()">↗ Auf aktuellen Wert</button>
+        </div>
+		
+        <label>Max. Stepper Geschwindigkeit (Steps/s)</label>
+        <input type="number" step="100" min="10000" max="30000" value="15000" id="maxStepperSpeed">
+
+        <label>Max. Stepper Beschleunigung (Steps/s²)</label>
+        <input type="number" step="100" min="1000" max="12000" value="5000" id="maxStepperAccel">
+
+        <!-- IMU Kalibrierung -->
+        <h3 style="text-align:center; margin-top:20px;">IMU Kalibrierung</h3>
+        <div class="buttonBar">
+            <button type="button" class="mainBtn" onclick="calibrateGyro()">Gyro kalibrieren</button>
+			<button type="button" class="mainBtn" onclick="calibrateMag()">Magnetometer kalibrieren</button>
+        </div>
+
+        <!-- Magnetometer 3D -->
+        <h3 style="text-align:center; margin-top:25px;">Magnetometer Live-Ansicht</h3>
+        <div id="mag3dContainer" style="width:100%; max-width:520px; height:320px; margin:15px auto; background:#001a26; border:1px solid #007a99; border-radius:10px;"></div>
+        <div id="magProgressText" style="text-align:center; margin-top:6px;">Kalibrierung inaktiv</div>
+        <div id="imuMessage" style="margin-top:10px; color:#00ffff; text-align:center;"></div>
+    </div>
+
+    <!-- Buttons Speichern/Abbrechen -->
+    <div class="buttonBar">
+        <button type="submit" class="mainBtn">💾 Speichern & Neustart</button>
+        <button type="button" class="mainBtn" onclick="window.location.reload()">❌ Abbrechen</button>
+    </div>
+
+	<h2>ESP File Manager</h2>
+	<div class="sectionBox">
+		<p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px; text-align: center;">
+			Dateisystem verwalten – Öffnet den Manager zum Hochladen und Organisieren von Systemdateien auf dem ESP.
+		</p>
+		
+		<div style="text-align:center; margin-top:6px;">
+			<a href="upload.html" class="fileupdatebtn">Datei upload</a>
+		</div>
+	</div>
+	
+  <div class="footer">
+    <strong>Autopilot v1.1</strong><br>
+    Entwickelt von den Partnern <span style="color:#00ffff;">Eike</span> & <span style="color:#00ffff;">NAVIS</span>.<br>
+    © 2025 – System ESP32
+  </div>
+</form>
+
+<script src="js/three.min.js"></script>
+<script>
+// ===== WLAN Scan =====
+function scanWifi() {
+    fetch('/scan').then(r => r.json()).then(data => {
+        const s = document.getElementById('ssid');
+        s.innerHTML = "";
+        data.forEach(ssid => {
+            const o = document.createElement('option');
+            o.value = ssid;
+            o.textContent = ssid;
+            s.appendChild(o);
+        });
+    });
+}
+// ===== PID Startwerte anhand Bootslänge =====
+function setBoatSize(length,event) {
+    let P = 0.8 + 0.05 * length;
+    let I = P * 0.5;
+    let D = P * 0.06;
+    pBase.value = P.toFixed(3);
+    iBase.value = I.toFixed(3);
+    dBase.value = D.toFixed(3);
+    document.querySelectorAll('.boatSizeBtn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+}
+// ===== Speichern der Konfiguration =====
+document.getElementById('configForm').addEventListener('submit',function(e) {
+    e.preventDefault();
+    const payload = {
+        ssid:ssid.value,
+        password:password.value,
+        port:parseInt(port.value),
+        gpsIntervalMs:parseInt(gpsHz.value),
+        imuIntervalMs:parseInt(imuHz.value),
+        sendIntervalMs:parseInt(sendInterval.value),
+        invert:invertPinne.checked?1:0,
+        P_base:parseFloat(pBase.value),
+        I_base:parseFloat(iBase.value),
+        D_base:parseFloat(dBase.value),
+        maxStepperSpeed:parseFloat(maxStepperSpeed.value),
+        maxStepperAccel:parseFloat(maxStepperAccel.value),
+        rudderMin:parseFloat(rudderMin.value),
+        rudderMax:parseFloat(rudderMax.value)
+    };
+    fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.text()).then(txt=>alert(txt)).catch(()=>alert("Fehler beim Speichern"));
+});
+// ===== Konfiguration laden =====
+function loadConfig() {
+    fetch('/config').then(r=>r.ok?r.json():Promise.reject("HTTP "+r.status)).then(cfg=>{
+        if(cfg.ssid) ssid.value=cfg.ssid;
+        if(cfg.port) port.value=cfg.port;
+        if(cfg.gpsIntervalMs) gpsHz.value=cfg.gpsIntervalMs;
+        if(cfg.imuIntervalMs) imuHz.value=cfg.imuIntervalMs;
+        if(cfg.sendIntervalMs) sendInterval.value=cfg.sendIntervalMs;
+        invertPinne.checked=cfg.invert?true:false;
+        if(cfg.P_base) pBase.value=parseFloat(cfg.P_base).toFixed(3);
+        if(cfg.I_base) iBase.value=parseFloat(cfg.I_base).toFixed(3);
+        if(cfg.D_base) dBase.value=parseFloat(cfg.D_base).toFixed(3);
+        if(cfg.maxStepperSpeed) maxStepperSpeed.value=parseFloat(cfg.maxStepperSpeed);
+        if(cfg.maxStepperAccel) maxStepperAccel.value=parseFloat(cfg.maxStepperAccel);
+        if(cfg.rudderMin) rudderMin.value=parseFloat(cfg.rudderMin);
+        if(cfg.rudderMax) rudderMax.value=parseFloat(cfg.rudderMax);
+        highlightMatchingBoatSize(cfg.P_base);
+    }).catch(err=>console.log("Config konnte nicht geladen werden:",err));
+}
+// ===== Bootslängen-PID markieren =====
+function highlightMatchingBoatSize(P) {
+    if(!P) return;
+    document.querySelectorAll('.boatSizeBtn').forEach(btn=>{
+        const length=parseInt(btn.textContent);
+        const calcP=0.8+0.05*length;
+        btn.classList.toggle('active',Math.abs(calcP-P)<0.001);
+    });
+}
+
+// ===== Gyro Kalibrierung =====
+function calibrateGyro() {
+    const msgDiv = document.getElementById('imuMessage');
+    // klare Nutzeranweisung
+    msgDiv.textContent = "Gyroskop-Kalibrierung läuft… Gerät bitte NICHT bewegen.";
+    fetch('/imu_calibrate_gyro', {
+        method: 'POST'
+    })
+    .then(r => r.text())
+    .then(txt => {
+        msgDiv.textContent = txt || "Gyro-Kalibrierung abgeschlossen.";
+        setTimeout(() => { msgDiv.textContent = ""; }, 5000);
+    })
+    .catch(() => {
+        msgDiv.textContent = "Fehler bei der Gyro-Kalibrierung";
+    });
+}
+
+function resetMagCalibration() {
+    magMin = {x:Infinity, y:Infinity, z:Infinity};
+    magMax = {x:-Infinity, y:-Infinity, z:-Infinity};
+    qualitySamples = 0;
+    magPointIndex = 0;
+
+    if (pointGeometry) {
+        pointGeometry.setDrawRange(0, 0);
+    }
+
+    autoScaleRadius = 90;
+}
+
+// ===== Magnetometer Kalibrierung =====
+function calibrateMag() {
+    const msgDiv = document.getElementById('imuMessage');
+    resetMagCalibration();
+    magCalibrationActive = true;
+    document.getElementById("magProgressText").textContent = "Kalibrierung startet…";
+    msgDiv.textContent = "Magnetometer-Kalibrierung läuft… Bitte Boot 30 Sekunden drehen.";
+    fetch('/imu_calibrate_mag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.text())
+    .then(txt => {
+        msgDiv.textContent = txt;
+        setTimeout(() => { msgDiv.textContent = ""; }, 5000);
+    })
+    .catch(() => {
+        msgDiv.textContent = "Fehler bei der Magnetometer-Kalibrierung";
+    });
+}
+
+
+// ===== MAG 3D VISUALISIERUNG =====
+let scene,camera,renderer;
+let pointGeometry,pointCloud,pointMaterial;
+let magPointIndex=0;
+const maxMagPoints=5000;
+let referenceSphere;
+let magArrow;
+let axesHelper;
+let magMin={x:Infinity,y:Infinity,z:Infinity};
+let magMax={x:-Infinity,y:-Infinity,z:-Infinity};
+let autoScaleRadius=90;
+let qualitySamples=0;
+let magCalibrationActive=false;
+let idleRot={x:0,y:0,z:0};
+// ===== Szene initialisieren =====
+function initMag3D() {
+    const container=document.getElementById("mag3dContainer");
+    scene=new THREE.Scene();
+    camera=new THREE.PerspectiveCamera(60,container.clientWidth/container.clientHeight,0.1,5000);
+    camera.position.z=220;
+    renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(container.clientWidth,container.clientHeight);
+    container.appendChild(renderer.domElement);
+    const sphereGeo=new THREE.SphereGeometry(90,24,24);
+    const sphereMat=new THREE.MeshBasicMaterial({color:0x004477,wireframe:true,transparent:true,opacity:0.4});
+    referenceSphere=new THREE.Mesh(sphereGeo,sphereMat);
+    scene.add(referenceSphere);
+    const dir=new THREE.Vector3(0,0,1);
+    magArrow=new THREE.ArrowHelper(dir,new THREE.Vector3(0,0,0),120,0x00ffcc);
+    scene.add(magArrow);
+    axesHelper=new THREE.AxesHelper(140);
+    scene.add(axesHelper);
+    pointGeometry=new THREE.BufferGeometry();
+    const positions=new Float32Array(3*maxMagPoints);
+    const colors=new Float32Array(3*maxMagPoints);
+    pointGeometry.setAttribute("position",new THREE.BufferAttribute(positions,3));
+    pointGeometry.setAttribute("color",new THREE.BufferAttribute(colors,3));
+    pointGeometry.setDrawRange(0,0);
+    pointMaterial=new THREE.PointsMaterial({size:5,transparent:true,opacity:0.9,vertexColors:true});
+    pointCloud=new THREE.Points(pointGeometry,pointMaterial);
+    scene.add(pointCloud);
+    animateMag3D();
+}
+// ===== Render-Loop =====
+function animateMag3D() {
+    requestAnimationFrame(animateMag3D);
+    camera.lookAt(0,0,0);
+    if(!magCalibrationActive) {
+        idleRot.x+=0.003;
+        idleRot.y+=0.003;
+        idleRot.z+=0.003;
+        scene.rotation.x=idleRot.x;
+        scene.rotation.y=idleRot.y;
+        scene.rotation.z=idleRot.z;
+    }
+    renderer.render(scene,camera);
+}
+// ===== Magnet-Update =====
+function updateMagVisualization(x,y,z) {
+    if(!referenceSphere||!magArrow) return;
+    const len=Math.sqrt(x*x+y*y+z*z);
+    if(len<0.0001) return;
+    const dir=new THREE.Vector3(x/len,y/len,z/len);
+    magArrow.setDirection(dir);
+    const forward=new THREE.Vector3(0,0,1);
+    const quat=new THREE.Quaternion().setFromUnitVectors(forward,dir);
+    referenceSphere.quaternion.slerp(quat,0.15);
+    updateHardIron(x,y,z);
+    updateAutoScale(x,y,z);
+    updateCalibrationQuality();
+}
+// ===== Hard-Iron Tracking =====
+function updateHardIron(x,y,z) {
+	if (!magCalibrationActive) return;
+    magMin.x=Math.min(magMin.x,x);
+    magMin.y=Math.min(magMin.y,y);
+    magMin.z=Math.min(magMin.z,z);
+    magMax.x=Math.max(magMax.x,x);
+    magMax.y=Math.max(magMax.y,y);
+    magMax.z=Math.max(magMax.z,z);
+    const offset={x:(magMax.x+magMin.x)/2,y:(magMax.y+magMin.y)/2,z:(magMax.z+magMin.z)/2};
+	if (qualitySamples < 50) {
+		const progressEl = document.getElementById("magProgressText");
+		progressEl.textContent = `Hard-Iron Offset → X:${offset.x.toFixed(1)} Y:${offset.y.toFixed(1)} Z:${offset.z.toFixed(1)}`;
+	}
+}
+// ===== Auto-Zoom =====
+function updateAutoScale(x,y,z) {
+    const r=Math.sqrt(x*x+y*y+z*z);
+    autoScaleRadius=Math.max(autoScaleRadius,r);
+    const targetZ=autoScaleRadius*2.4;
+    camera.position.z+=(targetZ-camera.position.z)*0.05;
+}
+// ===== Qualitätsbewertung =====
+function updateCalibrationQuality() {
+	if (!magCalibrationActive) return;
+    qualitySamples++;
+    const spanX=magMax.x-magMin.x;
+    const spanY=magMax.y-magMin.y;
+    const spanZ=magMax.z-magMin.z;
+    const minSpan=Math.min(spanX,spanY,spanZ);
+    const maxSpan=Math.max(spanX,spanY,spanZ);
+    if(maxSpan<1) return;
+    const quality=Math.max(0,Math.min(100,(minSpan/maxSpan)*100));
+    const progressEl=document.getElementById("magProgressText");
+    if(qualitySamples<50) progressEl.textContent="Kalibrierung läuft… Daten sammeln";
+    else progressEl.textContent=`Kalibrierqualität: ${quality.toFixed(0)} %`;
+}
+// ===== Punkte hinzufügen =====
+function addMagPoint(x,y,z) {
+    if(!pointGeometry) return;
+    const positions=pointGeometry.attributes.position.array;
+    const colors=pointGeometry.attributes.color.array;
+    const i=(magPointIndex%maxMagPoints)*3;
+    const scale=0.98;
+    const px=x*scale,py=y*scale,pz=z*scale;
+    positions[i]=px;
+    positions[i+1]=py;
+    positions[i+2]=pz;
+    const zNormalized=(pz+100)/200;
+    const brightness=0.3+0.7*(1-zNormalized);
+    colors[i]=1.0*brightness;
+    colors[i+1]=0.0;
+    colors[i+2]=0.0;
+    magPointIndex++;
+    const drawCount=Math.min(magPointIndex,maxMagPoints);
+    pointGeometry.setDrawRange(0,drawCount);
+    pointGeometry.attributes.position.needsUpdate=true;
+    pointGeometry.attributes.color.needsUpdate=true;
+}
+// ===== Ruderverarbeitung =====
+let currentRudderAngle=0;
+function updateRudderAngle(angle) {
+    currentRudderAngle=angle;
+    document.getElementById("rudderAngleDisplay").textContent=angle.toFixed(1);
+}
+function setRudderMin() { document.getElementById("rudderMin").value=currentRudderAngle.toFixed(1); }
+function setRudderMax() { document.getElementById("rudderMax").value=currentRudderAngle.toFixed(1); }
+// ===== WebSocket =====
+let ws;
+function initMagWS() {
+    ws=new WebSocket(`ws://${location.host}/ws`);
+    ws.onmessage=(event)=>{
+        try {
+            const d=JSON.parse(event.data);
+            if(d.rudderAngle!==undefined) updateRudderAngle(d.rudderAngle);
+            if (d.magCalRunning && d.magX !== undefined && d.magY !== undefined && d.magZ !== undefined) {
+                if(!magCalibrationActive) {
+                    idleRot.x=scene.rotation.x;
+                    idleRot.y=scene.rotation.y;
+                    idleRot.z=scene.rotation.z;
+                }
+                magCalibrationActive=true;
+                addMagPoint(d.magX,d.magY,d.magZ);
+                updateMagVisualization(d.magX,d.magY,d.magZ);
+            } else if (magCalibrationActive && d.magCalRunning === false) {
+				magCalibrationActive = false;
+				document.getElementById("magProgressText").textContent = "Kalibrierung inaktiv";
+			}
+        } catch(e) { console.error("WS Parse Error:",e); }
+    };
+    ws.onclose=()=>{console.warn("WS geschlossen, reconnect in 1s");setTimeout(initMagWS,1000);};
+    ws.onerror=()=>ws.close();
+}
+// ===== Simulation =====
+function simulateMagPoints(count=500) {
+    for(let i=0;i<count;i++) {
+        const r=80*Math.cbrt(Math.random());
+        const theta=Math.random()*2*Math.PI;
+        const phi=Math.acos(2*Math.random()-1);
+        const x=r*Math.sin(phi)*Math.cos(theta);
+        const y=r*Math.sin(phi)*Math.sin(theta);
+        const z=r*Math.cos(phi);
+        addMagPoint(x,y,z);
+    }
+    console.log(`Simuliert ${count} Punkte`);
+}
+// ===== INIT =====
+window.addEventListener("load",function() {
+    scanWifi();
+    loadConfig();
+    initMag3D();
+    initMagWS();
+});
+</script>
+</body>
+</html>
